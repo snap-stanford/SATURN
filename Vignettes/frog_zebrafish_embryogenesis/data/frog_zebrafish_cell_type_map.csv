@@ -1,0 +1,51 @@
+,frog_cell_type,zebrafish_cell_type
+0,Blastula,
+1,Germline,Germline
+2,Neuroectoderm,Neuroectoderm
+3,Non-neural ectoderm,Non-neural ectoderm
+4,Involuting marginal zone,Involuting marginal zone
+5,Spemann organizer,
+6,Endoderm,Endoderm
+7,Epidermal progenitor,Epidermal progenitor
+8,Ionocyte,Ionocyte
+9,Goblet cell,
+10,Presomitic mesoderm,Presomitic mesoderm
+11,Notochord,Notochord
+12,Tailbud,Tailbud
+13,Intermediate mesoderm,Intermediate mesoderm
+14,Cement gland primordium,
+15,Eye primordium,Eye primordium
+16,Placodal area,Placodal area
+17,Hindbrain,Hindbrain
+18,Neural crest,Neural crest
+19,Neuron,Neuron
+20,Forebrain/midbrain,Forebrain/midbrain
+21,Notoplate,Notoplate
+22,Hatching gland,Hatching gland
+23,Small secretory cells,
+24,Neuroendocrine cell,
+25,Skeletal muscle,Skeletal muscle
+26,Myeloid progenitors,
+27,Blood,Blood
+28,Endothelial,Endothelial
+29,Lens,Lens
+30,Otic placode,Otic placode
+31,Rohon-beard neuron,Rohon-beard neuron
+32,Pronephric mesenchyme,
+33,Olfactory placode,Olfactory placode
+34,Heart,Heart
+35,Optic,Optic
+36,,Pluripotent
+37,,Dorsal organizer
+38,,Apoptotic-like
+39,,Apoptotic-like 2
+40,,Nanog-high
+41,,Forerunner cells
+42,,Rare epidermal subtypes
+43,,Pronephric duct
+44,,Periderm
+45,,Macrophage
+46,,Epiphysis
+47,,Pancreas primordium
+48,,Pharyngeal pouch
+49,,Secretory epidermal

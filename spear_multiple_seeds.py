@@ -54,7 +54,7 @@ if __name__ == '__main__':
     
     command_part_2 = f" --in_label_col={args.in_label_col} --ref_label_col={args.ref_label_col} --work_dir=./Vignettes/multiple_seeds_results/ --num_macrogenes={args.macrogenes} --pretrain --model_dim=256 --polling_freq=201 --ref_label_col=cell_type --epochs=50 --pretrain_epochs=200 --pe_sim_penalty={args.pe_sim_penalty} --l1_penalty={args.l1_penalty} --seed="
     
-    org = args.run.replace(".csv", "")
+    org = args.run.split("/")[-1].replace(".csv", "")
     org += f"_l1_{args.l1_penalty}_pe_{args.pe_sim_penalty}"
     org += f"_{embedding_model}"
     command_part_3 = f" --org={org} "

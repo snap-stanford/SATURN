@@ -1,6 +1,6 @@
-
-
 ## Generating Protein Embeddings
+
+**NOTE: You can follow the instructions in `Generate Protein Embeddings.ipynb`**
 
 ### Proteome data
 

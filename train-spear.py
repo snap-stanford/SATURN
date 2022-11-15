@@ -41,10 +41,27 @@ from score_adata import get_all_scores
 from utils import stop_conditions
 import random
 
+
 def train(model, loss_func, mining_func, device,
                 train_loader, optimizer, epoch, mnn, 
           sorted_species_names, use_ref_labels=False, indices_counts={}, equalize_triplets_species=False):
+    '''
+    Train one epoch for a SPEAR model with Metric Learning
     
+    Keyword arguments:
+    model -- the pretrain model, class is SpearMetricModel
+    loss_func -- the loss function, cosine similarity distance
+    mining_func -- mining function, triplet margin miner
+    device -- the current torch device
+    train_loader -- train loader, returns the macrogene values and label categorical codes
+    optimizer -- torch optimizer for model
+    epoch -- current epoch
+    mnn -- use mutual nearest neighbors for metric learning mining
+    sorted_species_names -- names of the species that are being aligned
+    use_ref_labels -- if metric learning should increase supervision by using shared coarse labels, stored in the ref labels values
+    equalize_triplets_species -- if metric learning should mine triples in a balanced manner from each species
+    
+    '''
     
     model.train()
     torch.autograd.set_detect_anomaly(True)
@@ -98,6 +115,8 @@ def train(model, loss_func, mining_func, device,
             
             a_bal_inv = a_balance[a_inv]
             p_bal_inv = p_balance[p_inv]
+            
+            # WEIGHT THE LOSS BY THE NUMBER OF TRIPLETS MINED PER SPECIES
             loss = torch.mul(torch.mul(loss, a_bal_inv), p_bal_inv).mean()                                         
                                                        
         loss.backward()
@@ -110,6 +129,22 @@ def train(model, loss_func, mining_func, device,
 
 def pretrain_spear(model, pretrain_loader, optimizer, device, nepochs, 
                        sorted_species_names, balance=False, use_batch_labels=False, embeddings_tensor=None):
+    '''
+    Pretrain a SPEAR model with a conditional autoencoder
+
+    Keyword arguments:
+    model -- the pretrain model, class is SpearPretrainModel
+    pretrain_loader -- train loader, returns the count values
+    optimizer -- torch optimizer for model
+    device -- the current torch device
+    nepochs -- how many epochs to pretrain for
+    sorted_species_names -- names of the species that are being aligned
+    balance -- if we should balance the loss by cell label abundancy
+    use_batch_labels -- if we add batch labels as a categorical covariate
+    embeddings_tensor -- dictionary containing species:protein embeddings
+    '''
+    
+    
     print('Pretraining...')
     model.train();
     
@@ -222,6 +257,14 @@ def pretrain_spear(model, pretrain_loader, optimizer, device, nepochs,
 
 
 def get_all_embeddings(dataset, model, device, use_batch_labels=False):
+    '''
+    Get the embeddings and other metadata for a pretraining model.
+
+    Keyword arguments:
+    model -- the pretrain model, class is SpearPretrainModel
+    dataset -- count values
+    use_batch_labels -- if we add batch labels as a categorical covariate
+    '''
     test_loader = torch.utils.data.DataLoader(dataset, collate_fn=multi_species_collate_fn,
                                         batch_size=1024, shuffle=False)
 
@@ -270,7 +313,14 @@ def get_all_embeddings(dataset, model, device, use_batch_labels=False):
 def get_all_embeddings_metric(dataset, model, device, use_batch_labels=False):
     test_loader = torch.utils.data.DataLoader(dataset, collate_fn=multi_species_collate_fn,
                                         batch_size=1024, shuffle=False)
+    '''
+    Get the embeddings and other metadata for a trained SPEAR model.
 
+    Keyword arguments:
+    model -- the trained model, class is SpearMetricModel
+    dataset -- macrogene values
+    use_batch_labels -- if we add batch labels as a categorical covariate
+    '''
     model.eval()
     embs = []
     macrogenes = []
@@ -312,6 +362,9 @@ def get_all_embeddings_metric(dataset, model, device, use_batch_labels=False):
     
 
 def create_output_anndata(train_emb, train_lab, train_species, train_macrogenes, train_ref, celltype_id_map, reftype_id_map, use_batch_labels=False, batchtype_id_map=None, train_batch=None):
+    '''
+    Create an AnnData from SPEAR results
+    '''
     adata = AnnData(train_emb)
     labels = train_lab.squeeze()
     id2cell_type = {v:k for k,v in celltype_id_map.items()}
@@ -337,6 +390,9 @@ def create_output_anndata(train_emb, train_lab, train_species, train_macrogenes,
     return adata
 
 def trainer(args):
+    '''
+    Runs the SPEAR pipeline
+    '''
     data_df = pd.read_csv(args.in_data, index_col="species")       
     # data_df should have columns for df location
     species_to_path = data_df.to_dict()["path"]
@@ -399,6 +455,8 @@ def trainer(args):
     else:
         score_column = "labels2"
         
+        
+    # If we are using batch labels, add them as a column in our output anndatas and pass them as a categorical covariate to pretraining
     if use_batch_labels:
         
         unique_batch_types = set()
@@ -414,21 +472,20 @@ def trainer(args):
         num_batch_labels = len(unique_batch_types)
         print(f"Using Batch Labels, {num_batch_labels}")
                 
-    if True: # make the ref labels column categorical and mapped
-        unique_ref_types = set()
-        for adata in species_to_adata.values():
-            unique_ref_types = (unique_ref_types | set(adata.obs[args.ref_label_col]))
+    # make the ref labels column categorical and mapped
+    unique_ref_types = set()
+    for adata in species_to_adata.values():
+        unique_ref_types = (unique_ref_types | set(adata.obs[args.ref_label_col]))
 
-        unique_ref_types = sorted(unique_ref_types)
+    unique_ref_types = sorted(unique_ref_types)
 
-        reftype_id_map = {ref_type: index for index, ref_type in enumerate(unique_ref_types)}
+    reftype_id_map = {ref_type: index for index, ref_type in enumerate(unique_ref_types)}
 
-        for adata in species_to_adata.values():
-            adata.obs["ref_labels"] = pd.Categorical(
-                values=[reftype_id_map[ref_type] for ref_type in adata.obs[args.ref_label_col]]
-            )
-    else:
-        reftype_id_map = celltype_id_map   
+    for adata in species_to_adata.values():
+        adata.obs["ref_labels"] = pd.Categorical(
+            values=[reftype_id_map[ref_type] for ref_type in adata.obs[args.ref_label_col]]
+        )
+  
     # Load gene embeddings (which also requires filtering data genes to those with embeddings)
     species_to_gene_embeddings = {}
     for species, adata in species_to_adata.items():
@@ -491,6 +548,7 @@ def trainer(args):
         # create the centroids and don't save them
         species_genes_scores = make_centroids(X, all_gene_names, args.num_macrogenes, seed=args.seed)
     
+    # Initialize macrogenes
     centroid_weights = []
     all_species_gene_names = []
     for species in sorted_species_names:
@@ -565,6 +623,8 @@ def trainer(args):
     else:
         sorted_batch_labels_names = None
     
+    
+    #### Pretraining ####
     pretrain_model = SPEARPretrainModel(gene_scores=centroid_weights, 
                                    hidden_dim=hidden_dim, embed_dim=model_dim, 
                                    dropout=0.1, species_to_gene_idx=species_to_gene_idx_hv, 
@@ -632,6 +692,8 @@ def trainer(args):
         get_all_scores(pretrain_adata_path, args.ct_map_path, score_column, 
                        sorted_species_names[0], sorted_species_names[1], num_scores=1)
     print("-----------------------------")
+    
+    #### Metric Learning ####
     print("***STARTING METRIC LEARNING***")
     if args.unfreeze_macrogenes:
         print("***MACROGENE WEIGHTS UNFROZEN***")

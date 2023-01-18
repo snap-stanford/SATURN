@@ -1,5 +1,4 @@
-# SPEAR
-## SPEAR: Uniting Single-cell Gene Expressions with Protein Sequences for Cross-Species Integration
+# SPEAR: Uniting Single-cell Gene Expressions with Protein Sequences for Cross-Species Integration
 
 PyTorch implementation of SPEAR, a deep learning approach that couples gene expression with protein representations learnt using large protein language models. The key idea in SPEAR is to map cells from all datasets to a shared space of functionally related genes that we name macrogenes.
 

@@ -116,6 +116,18 @@ To score SPEAR outputs after training is finished, use the `score_adata.py` file
 - `label`: the label column for cell types. If scoring a SPEAR output, this should be `labels2`
 - `scores`: the number of scores that should be calculated.
 
+## Citing
+
+If you find our paper and code useful, please consider citing:
+
+```
+@article{spear2023,
+  title={SPEAR: Uniting Single-cell Gene Expressions with Protein Sequences for Cross-Species Integration},
+  author={Rosen, Yanay and Brbi{\'c}, Maria and Roohani, Yusuf and Swanson, Kyle and Ziang, Li and Leskovec, Jure},
+  journal={bioRxiv},
+  year={2023},
+}
+```
 
 
 

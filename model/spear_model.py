@@ -205,7 +205,9 @@ class SPEARPretrainModel(torch.nn.Module):
     
     
     def gene_weight_ranking_loss(self, weights, embeddings):
+        # weights is M x G
         x1 = self.p_weights_embeddings(weights.t())
+        # genes x 256
         loss = nn.MSELoss(reduction="sum")
         similarity = torch.nn.CosineSimilarity()
         

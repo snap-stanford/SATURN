@@ -17,6 +17,8 @@ class Args(Tap):
 
 
 GENE_SYMBOL = 'gene_symbol:'
+# GENE_SYMBOL = 'gene:' # for octopus
+
 
 
 def map_gene_symbol_to_protein_ids(args: Args) -> None:
@@ -40,6 +42,7 @@ def map_gene_symbol_to_protein_ids(args: Args) -> None:
 
     # Print stats
     all_gene_symbols = set(gene_symbol_to_protein_ids)
+    print(len(seqs))
     all_protein_ids = set.union(*[protein_ids for protein_ids in gene_symbol_to_protein_ids.values()])
 
     print(f'Number of gene symbols = {len(all_gene_symbols):,}')

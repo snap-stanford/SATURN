@@ -30,7 +30,7 @@ from data.gene_embeddings import load_gene_embeddings_adata
 from data.multi_species_data import ExperimentDatasetMulti, multi_species_collate_fn, ExperimentDatasetMultiEqualCT
 from data.multi_species_data import ExperimentDatasetMultiEqual
 
-from model.spear_model import SPEARPretrainModel, SPEARMetricModel, make_centroids
+from model.saturn_model import SATURNPretrainModel, SATURNMetricModel, make_centroids
 import torch.nn.functional as F
 from tqdm import trange, tqdm
 from pretrain_utils import *
@@ -41,7 +41,7 @@ from pathlib import Path
 import sys
 sys.path.append('../')
 
-# SPEAR
+# SATURN
 from sklearn.cluster import KMeans
 from scipy.stats import rankdata
 import pickle
@@ -55,10 +55,10 @@ def train(model, loss_func, mining_func, device,
                 train_loader, optimizer, epoch, mnn, 
           sorted_species_names, use_ref_labels=False, indices_counts={}, equalize_triplets_species=False):
     '''
-    Train one epoch for a SPEAR model with Metric Learning
+    Train one epoch for a SATURN model with Metric Learning
     
     Keyword arguments:
-    model -- the pretrain model, class is SpearMetricModel
+    model -- the pretrain model, class is saturnMetricModel
     loss_func -- the loss function, cosine similarity distance
     mining_func -- mining function, triplet margin miner
     device -- the current torch device
@@ -136,13 +136,13 @@ def train(model, loss_func, mining_func, device,
                   "= {}".format(epoch, batch_idx, loss,
                                 mining_func.num_triplets))
 
-def pretrain_spear(model, pretrain_loader, optimizer, device, nepochs, 
+def pretrain_saturn(model, pretrain_loader, optimizer, device, nepochs, 
                        sorted_species_names, balance=False, use_batch_labels=False, embeddings_tensor=None):
     '''
-    Pretrain a SPEAR model with a conditional autoencoder
+    Pretrain a SATURN model with a conditional autoencoder
 
     Keyword arguments:
-    model -- the pretrain model, class is SpearPretrainModel
+    model -- the pretrain model, class is saturnPretrainModel
     pretrain_loader -- train loader, returns the count values
     optimizer -- torch optimizer for model
     device -- the current torch device
@@ -270,7 +270,7 @@ def get_all_embeddings(dataset, model, device, use_batch_labels=False):
     Get the embeddings and other metadata for a pretraining model.
 
     Keyword arguments:
-    model -- the pretrain model, class is SpearPretrainModel
+    model -- the pretrain model, class is saturnPretrainModel
     dataset -- count values
     use_batch_labels -- if we add batch labels as a categorical covariate
     '''
@@ -323,10 +323,10 @@ def get_all_embeddings_metric(dataset, model, device, use_batch_labels=False):
     test_loader = torch.utils.data.DataLoader(dataset, collate_fn=multi_species_collate_fn,
                                         batch_size=1024, shuffle=False)
     '''
-    Get the embeddings and other metadata for a trained SPEAR model.
+    Get the embeddings and other metadata for a trained SATURN model.
 
     Keyword arguments:
-    model -- the trained model, class is SpearMetricModel
+    model -- the trained model, class is saturnMetricModel
     dataset -- macrogene values
     use_batch_labels -- if we add batch labels as a categorical covariate
     '''
@@ -372,7 +372,7 @@ def get_all_embeddings_metric(dataset, model, device, use_batch_labels=False):
 
 def create_output_anndata(train_emb, train_lab, train_species, train_macrogenes, train_ref, celltype_id_map, reftype_id_map, use_batch_labels=False, batchtype_id_map=None, train_batch=None):
     '''
-    Create an AnnData from SPEAR results
+    Create an AnnData from SATURN results
     '''
     adata = AnnData(train_emb)
     labels = train_lab.squeeze()
@@ -400,7 +400,7 @@ def create_output_anndata(train_emb, train_lab, train_species, train_macrogenes,
 
 def trainer(args):
     '''
-    Runs the SPEAR pipeline
+    Runs the SATURN pipeline
     '''
     data_df = pd.read_csv(args.in_data, index_col="species")       
     # data_df should have columns for df location
@@ -634,7 +634,7 @@ def trainer(args):
     
     
     #### Pretraining ####
-    pretrain_model = SPEARPretrainModel(gene_scores=centroid_weights, 
+    pretrain_model = SATURNPretrainModel(gene_scores=centroid_weights, 
                                    hidden_dim=hidden_dim, embed_dim=model_dim, 
                                    dropout=0.1, species_to_gene_idx=species_to_gene_idx_hv, 
                                    vae=args.vae, sorted_batch_labels_names=sorted_batch_labels_names, 
@@ -646,7 +646,7 @@ def trainer(args):
         pretrain_loader = torch.utils.data.DataLoader(dataset, collate_fn=multi_species_collate_fn,
                                         batch_size=args.pretrain_batch_size, shuffle=True)
         
-        pretrain_model = pretrain_spear(pretrain_model, pretrain_loader, optim_pretrain, 
+        pretrain_model = pretrain_saturn(pretrain_model, pretrain_loader, optim_pretrain, 
                                             args.device, args.pretrain_epochs, 
                                             sorted_species_names, balance=args.balance_pretrain, 
                                             use_batch_labels=use_batch_labels, embeddings_tensor=X.to(device))
@@ -670,7 +670,7 @@ def trainer(args):
     for i, gene_species_name in enumerate(all_species_gene_names):
         species_genes_scores_final[gene_species_name] = final_scores[i, :]
     
-    metric_dir = Path(args.work_dir) / 'spear_results'
+    metric_dir = Path(args.work_dir) / 'saturn_results'
     metric_dir.mkdir(parents=True, exist_ok=True)
     run_name = args.dir_.split(args.log_dir)[-1]
     
@@ -740,7 +740,7 @@ def trainer(args):
 
         # metric model will have params copied over, initialize it, only takes
         # macrogene values as inputs since we have frozen them
-        metric_model = SPEARMetricModel(input_dim=train_macrogenes.shape[1], 
+        metric_model = SATURNMetricModel(input_dim=train_macrogenes.shape[1], 
                                        hidden_dim=hidden_dim, embed_dim=model_dim, 
                                        dropout=0.1, 
                                        species_to_gene_idx=species_to_gene_idx_hv, 
@@ -908,7 +908,7 @@ if __name__ == '__main__':
     parser.add_argument('--tissue_column', type=str,
                         help='When subsetting the input anndatas by the column, use this column name.')
     
-    # SPEAR Setup
+    # SATURN Setup
     parser.add_argument('--hv_genes', type=int,
                         help='Number of highly variable genes')
     parser.add_argument('--hv_span', type=float,
@@ -993,7 +993,7 @@ if __name__ == '__main__':
     # Defaults
     parser.set_defaults(
         in_data=None,
-        org='spear',
+        org='saturn',
         in_label_col=None,
         ref_label_col="CL_class_coarse",
         non_species_batch_col=None,

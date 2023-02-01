@@ -23,7 +23,7 @@ def full_block(in_features, out_features, p_drop=0.1):
     )
 
 
-class SPEARPretrainModel(torch.nn.Module):
+class SATURNPretrainModel(torch.nn.Module):
     def __init__(self, gene_scores, dropout=0, hidden_dim=128, embed_dim=10, species_to_gene_idx={}, vae=False, random_weights=False, 
                  sorted_batch_labels_names=None, l1_penalty=0.1, pe_sim_penalty=1.0):
         super().__init__()
@@ -237,7 +237,7 @@ class SPEARPretrainModel(torch.nn.Module):
         return eps * std + mu
     
     
-class SPEARMetricModel(torch.nn.Module):
+class SATURNMetricModel(torch.nn.Module):
     def __init__(self, input_dim=2000, dropout=0, hidden_dim=128, embed_dim=10, species_to_gene_idx={}, vae=False):
         super().__init__()
         

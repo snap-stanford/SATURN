@@ -10,7 +10,7 @@ import tqdm
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='Train many SPEAR runs.',
+        description='Train many SATURN runs.',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--run', help='run file path')
     parser.add_argument('--seeds', help='How many seeds to run?')
@@ -26,8 +26,8 @@ if __name__ == '__main__':
     parser.add_argument('--pe_sim_penalty', type=float,
                         help='Protein Embedding similarity to Macrogene loss, weight hyperparameter. Default is 1.0')
     
-    # python spear_multiple_seeds.py --run=frog_zebrafish_run.csv --seeds=30 --embedding_model=protXL --gpus 2 3 4 5 6 7
-    # python spear_multiple_seeds.py --run=frog_zebrafish_run_rand.csv --in_label_col=random_cell_type --ref_label_col=cell_type --seeds=10 --gpus 3 8 9
+    # python saturn_multiple_seeds.py --run=frog_zebrafish_run.csv --seeds=30 --embedding_model=protXL --gpus 2 3 4 5 6 7
+    # python saturn_multiple_seeds.py --run=frog_zebrafish_run_rand.csv --in_label_col=random_cell_type --ref_label_col=cell_type --seeds=10 --gpus 3 8 9
     
     
     
@@ -50,7 +50,7 @@ if __name__ == '__main__':
     print(available_gpus)
     
     seeds = np.arange(int(args.seeds))
-    command_part_1 = f"python train-spear.py --in_data={args.run} --device_num="
+    command_part_1 = f"python train-saturn.py --in_data={args.run} --device_num="
     
     command_part_2 = f" --in_label_col={args.in_label_col} --ref_label_col={args.ref_label_col} --work_dir=./Vignettes/multiple_seeds_results/ --num_macrogenes={args.macrogenes} --pretrain --model_dim=256 --polling_freq=201 --ref_label_col=cell_type --epochs=50 --pretrain_epochs=200 --pe_sim_penalty={args.pe_sim_penalty} --l1_penalty={args.l1_penalty} --seed="
     
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     command_part_3 = f" --org={org} "
     if embedding_model is not None:
         command_part_3 += f"--embedding_model={embedding_model}  "
-    command_part_3 += f"--centroids_init_path=./Vignettes/multiple_seeds_results/spear_{org}_seed_"
+    command_part_3 += f"--centroids_init_path=./Vignettes/multiple_seeds_results/saturn_{org}_seed_"
         
     processes = {}
 

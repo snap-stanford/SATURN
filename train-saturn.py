@@ -370,7 +370,7 @@ def get_all_embeddings_metric(dataset, model, device, use_batch_labels=False):
         return torch.stack(embs).cpu().numpy(), np.array(labs), np.array(spec), torch.stack(macrogenes), np.array(refs)           
     
 
-def create_output_anndata(train_emb, train_lab, train_species, train_macrogenes, train_ref, celltype_id_map, reftype_id_map, use_batch_labels=False, batchtype_id_map=None, train_batch=None):
+def create_output_anndata(train_emb, train_lab, train_species, train_macrogenes, train_ref, celltype_id_map, reftype_id_map, use_batch_labels=False, batchtype_id_map=None, train_batch=None, obs_names=None):
     '''
     Create an AnnData from SATURN results
     '''
@@ -396,6 +396,8 @@ def create_output_anndata(train_emb, train_lab, train_species, train_macrogenes,
         id2batch_type = {v:k for k,v in batchtype_id_map.items()}
         adata.obs['batch_labels'] = pd.Categorical([id2batch_type[int(l)]
                                                for l in batch_labels])
+    if obs_names is not None:
+        adata.obs_names = obs_names
     return adata
 
 def trainer(args):
@@ -428,7 +430,8 @@ def trainer(args):
         species_to_label = data_df.to_dict()["in_label_col"]
         species_to_label_col = {species:col for species,col in species_to_label.items()}
         
-    
+    #
+    all_obs_names = []
     # Add species to celltype name
     for species, adata in species_to_adata.items():
         adata_label = args.in_label_col
@@ -439,6 +442,7 @@ def trainer(args):
         adata.obs["species"] = species_str
         species_specific_celltype = species_str.str.cat(adata.obs[adata_label], sep="_")
         adata.obs["species_type_label"] = species_specific_celltype
+        all_obs_names += list(adata.obs_names)
     
     # Create mapping from cell type to ID
     
@@ -490,6 +494,7 @@ def trainer(args):
 
     reftype_id_map = {ref_type: index for index, ref_type in enumerate(unique_ref_types)}
 
+    
     for adata in species_to_adata.values():
         adata.obs["ref_labels"] = pd.Categorical(
             values=[reftype_id_map[ref_type] for ref_type in adata.obs[args.ref_label_col]]
@@ -549,13 +554,13 @@ def trainer(args):
         except:
             # create the centroids and save them to that location. Centroids are the unmodified macrogene weight values.
             # We also save the modified macrogene values to a different file.
-            species_genes_scores = make_centroids(X, all_gene_names, args.num_macrogenes, seed=args.seed)
+            species_genes_scores = make_centroids(X, all_gene_names, args.num_macrogenes, seed=args.seed, score_function=args.centroid_score_func)
             with open(args.centroids_init_path, "wb") as f:
                 pickle.dump(species_genes_scores, f, protocol=4) # Save the scores dict
             print(f"Saved centroids to {args.centroids_init_path}")
     else:
         # create the centroids and don't save them
-        species_genes_scores = make_centroids(X, all_gene_names, args.num_macrogenes, seed=args.seed)
+        species_genes_scores = make_centroids(X, all_gene_names, args.num_macrogenes, seed=args.seed, score_function=args.centroid_score_func)
     
     # Initialize macrogenes
     centroid_weights = []
@@ -684,13 +689,13 @@ def trainer(args):
     
         adata = create_output_anndata(train_emb, train_lab, train_species, 
                                         train_macrogenes.cpu().numpy(), train_ref, 
-                                        celltype_id_map, reftype_id_map, use_batch_labels, batchtype_id_map, train_batch)  
+                                        celltype_id_map, reftype_id_map, use_batch_labels, batchtype_id_map, train_batch, obs_names=all_obs_names)  
     else:
         train_emb, train_lab, train_species, train_macrogenes, train_ref = get_all_embeddings(test_dataset, pretrain_model, device, use_batch_labels)
     
         adata = create_output_anndata(train_emb, train_lab, train_species, 
                                         train_macrogenes.cpu().numpy(), train_ref, 
-                                        celltype_id_map, reftype_id_map)        
+                                        celltype_id_map, reftype_id_map, obs_names=all_obs_names)        
     
     pretrain_adata_path = metric_dir / f'{run_name}_pretrain.h5ad'
     adata.write(pretrain_adata_path)
@@ -790,7 +795,7 @@ def trainer(args):
               equalize_triplets_species = args.equalize_triplets_species)
         epoch_df = pd.DataFrame.from_records(list(epoch_indices_counts.items()), columns=["Triplet", "Count"])
         epoch_df["Epoch"] = epoch
-        all_indices_counts = all_indices_counts.append(epoch_df)
+        all_indices_counts = pd.concat((all_indices_counts, epoch_df))
         
         if epoch%args.polling_freq==0:
             if use_batch_labels:
@@ -799,13 +804,13 @@ def trainer(args):
     
                 adata = create_output_anndata(train_emb, train_lab, train_species, 
                                         train_macrogenes.cpu().numpy(), train_ref, 
-                                        celltype_id_map, reftype_id_map, use_batch_labels, batchtype_id_map, train_batch)  
+                                        celltype_id_map, reftype_id_map, use_batch_labels, batchtype_id_map, train_batch, obs_names=all_obs_names)  
             else:
                 train_emb, train_lab, train_species, train_macrogenes, train_ref = get_all_embeddings_metric(test_metric_dataset, \
                                                                                      metric_model, device, use_batch_labels)
                 adata = create_output_anndata(train_emb, train_lab, train_species, 
                                                     train_macrogenes.cpu().numpy(), train_ref, 
-                                                    celltype_id_map, reftype_id_map)
+                                                    celltype_id_map, reftype_id_map, obs_names=all_obs_names)
             if args.score_adatas:
                 lr_row = stop_conditions.logreg_epoch_score(adata, epoch)
                 scores_df = scores_df.append(lr_row, ignore_index=True)
@@ -819,13 +824,13 @@ def trainer(args):
     
                 adata = create_output_anndata(train_emb, train_lab, train_species, 
                                         train_macrogenes.cpu().numpy(), train_ref, 
-                                        celltype_id_map, reftype_id_map, use_batch_labels, batchtype_id_map, train_batch)  
+                                        celltype_id_map, reftype_id_map, use_batch_labels, batchtype_id_map, train_batch, obs_names=all_obs_names)  
             else:
                 train_emb, train_lab, train_species, train_macrogenes, train_ref = get_all_embeddings_metric(test_metric_dataset, \
                                                                                      metric_model, device, use_batch_labels)
                 adata = create_output_anndata(train_emb, train_lab, train_species, 
                                                     train_macrogenes.cpu().numpy(), train_ref, 
-                                                    celltype_id_map, reftype_id_map)
+                                                    celltype_id_map, reftype_id_map, obs_names=all_obs_names)
             ml_intermediate_path = metric_dir / f'{run_name}_ep_{epoch}.h5ad'
             adata.write(ml_intermediate_path)
             
@@ -847,13 +852,13 @@ def trainer(args):
 
         adata = create_output_anndata(train_emb, train_lab, train_species, 
                                 train_macrogenes.cpu().numpy(), train_ref, 
-                                celltype_id_map, reftype_id_map, use_batch_labels, batchtype_id_map, train_batch)  
+                                celltype_id_map, reftype_id_map, use_batch_labels, batchtype_id_map, train_batch, obs_names=all_obs_names)  
     else:
         train_emb, train_lab, train_species, train_macrogenes, train_ref = get_all_embeddings_metric(test_metric_dataset, \
                                                                              metric_model, device, use_batch_labels)
         adata = create_output_anndata(train_emb, train_lab, train_species, 
                                             train_macrogenes.cpu().numpy(), train_ref, 
-                                            celltype_id_map, reftype_id_map)
+                                            celltype_id_map, reftype_id_map, obs_names=all_obs_names)
     final_path = metric_dir / f'{run_name}.h5ad'
     adata.write(final_path)
     
@@ -918,6 +923,8 @@ if __name__ == '__main__':
     parser.add_argument('--centroids_init_path', type=str,
                         help='Path to existing centroids pretraining weights, or location to save to.')
     parser.add_argument('--embedding_model', type=str, choices=['ESM1b', 'MSA1b', 'protXL', 'ESM1b_protref', 'ESM2'],
+                    help='Gene embedding model whose embeddings should be loaded if using gene_embedding_method')
+    parser.add_argument('--centroid_score_func', type=str, choices=['default', 'one_hot', 'smoothed'],
                     help='Gene embedding model whose embeddings should be loaded if using gene_embedding_method')
     
     
@@ -1035,7 +1042,8 @@ if __name__ == '__main__':
         tissue_column="tissue_type",
         l1_penalty=0.0,
         pe_sim_penalty=1.0,
-        hv_span=0.3
+        hv_span=0.3,
+        centroid_score_func="default"
     )
 
     args = parser.parse_args()

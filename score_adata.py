@@ -778,8 +778,8 @@ from typing import Dict, Optional
 import matplotlib.pyplot as plt
 import pandas as pd
 import scanpy as sc
-from sklearnex import patch_sklearn
-patch_sklearn()
+#from sklearnex import patch_sklearn
+#patch_sklearn()
 from sklearn.dummy import DummyClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
@@ -787,7 +787,7 @@ from sklearn.neighbors import KNeighborsClassifier
 
 from sklearn.metrics import accuracy_score, ConfusionMatrixDisplay, balanced_accuracy_score, roc_auc_score
 from sklearn.model_selection import train_test_split
-from tap import Tap
+#from tap import Tap
 
 
 

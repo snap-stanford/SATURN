@@ -133,14 +133,15 @@ class SATURNPretrainModel(torch.nn.Module):
             log_var = None
         
         spec_1h = torch.zeros(batch_size, self.num_species).to(inp.device)
-        spec_idx = np.argmax(self.sorted_species_names == species)
+        #spec_idx = np.argmax(np.array(self.sorted_species_names) == species) # Fix for one hot
+        spec_idx = 0
         spec_1h[:, spec_idx] = 1.
         
         if self.num_batch_labels > 0:
             # construct the one hot encoding of the batch labels
             # also a categorical covariate
             batch_1h = torch.zeros(batch_size, self.num_batch_labels).to(inp.device)
-            batch_idx = np.argmax(self.sorted_batch_labels_names == batch_labels)
+            batch_idx = np.argmax(np.array(self.sorted_batch_labels_names) == batch_labels)
             batch_1h[:, batch_idx] = 1.
             spec_1h = torch.hstack((spec_1h, batch_1h)) # should already be one hotted
         
@@ -323,7 +324,7 @@ class SATURNMetricModel(torch.nn.Module):
         return eps * std + mu
     
 
-def make_centroids(embeds, species_gene_names, num_centroids=2000, normalize=False, seed=0):
+def make_centroids(embeds, species_gene_names, num_centroids=2000, normalize=False, seed=0, score_function="default"):
     print("Making Centroids")
     if normalize:
         row_sums = embeds.sum(axis=1)
@@ -331,11 +332,13 @@ def make_centroids(embeds, species_gene_names, num_centroids=2000, normalize=Fal
     kmeans_obj = KMeans(n_clusters=num_centroids, random_state=seed).fit(embeds)
     # dd is distance frome each gene to centroid
     dd = kmeans_obj.transform(embeds)
-    ranked = rankdata(dd, axis=1) # rank 1 is close rank 2000 is far
-
-    to_scores = np.log1p(1 / ranked) # log 1 is close log 1/2000 is far
-
-    to_scores = ((to_scores) ** 2)  * 2
+    
+    if score_function == "default":
+        to_scores = default_centroids_scores(dd)
+    elif score_function == "one_hot":
+        to_scores = one_hot_centroids_scores(dd)
+    elif score_function == "smoothed":
+        to_scores = smoothed_centroids_score(dd)
     
     species_genes_scores = {}
     for i, gene_species_name in enumerate(species_gene_names):
@@ -343,6 +346,38 @@ def make_centroids(embeds, species_gene_names, num_centroids=2000, normalize=Fal
     return species_genes_scores
 
 
+def default_centroids_scores(dd):
+    """
+    Convert KMeans distances to centroids to scores.
+    :param dd: distances from gene to centroid.
+    """
+    ranked = rankdata(dd, axis=1) # rank 1 is close rank 2000 is far
+
+    to_scores = np.log1p(1 / ranked) # log 1 is close log 1/2000 is far
+
+    to_scores = ((to_scores) ** 2)  * 2
+    return to_scores
+
+
+def one_hot_centroids_scores(dd):
+    """
+    Convert KMeans distances to centroids to scores. All or nothing, so closest centroid has score 1, others have score 0.
+    :param dd: distances from gene to centroid.
+    """
+    ranked = rankdata(dd, axis=1) # rank 1 is close rank 2000 is far
+    
+    to_scores = (ranked == 1).astype(float) # true, which is rank 1, is highest, everything else is 0
+    return to_scores
+
+
+def smoothed_centroids_score(dd):
+    """
+    Convert KMeans distances to centroids to scores. Smoothed version of original function, so later ranks have larger values.
+    :param dd: distances from gene to centroid.
+    """
+    ranked = rankdata(dd, axis=1) # rank 1 is close rank 2000 is far
+    to_scores = 1 / ranked # 1/1 is highest, 1/2 is higher than before, etc.
+    return to_scores
 
 
 ### ABLATION (INPUT IS ORTHOLOG GENES) ###

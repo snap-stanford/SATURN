@@ -1,6 +1,6 @@
 # SATURN: Uniting Single-cell Gene Expressions with Protein Sequences for Cross-Species Integration
 
-PyTorch implementation of SATURN, a deep learning approach that couples gene expression with protein representations learnt using large protein language models for cross-species integration. The key idea in SATURN is to map cells from all datasets to a shared space of functionally related genes that we name macrogenes. Using macrogenes, SATURN is uniquely able to detect functionally related genes co-expressed across species.
+PyTorch implementation of [SATURN](https://www.biorxiv.org/content/10.1101/2023.02.03.526939v1), a deep learning approach that couples gene expression with protein representations learnt using large protein language models for cross-species integration. The key idea in SATURN is to map cells from all datasets to a shared space of functionally related genes that we name macrogenes. Using macrogenes, SATURN is uniquely able to detect functionally related genes co-expressed across species.
 
 <p align="center">
 <img src="https://github.com/snap-stanford/saturn/blob/main/saturn_fig.png" width="1100" align="center">
@@ -118,17 +118,27 @@ To score SATURN outputs after training is finished, use the `score_adata.py` fil
 
 ## Citing
 
-If you find our paper and code useful, please consider citing:
+If you find our paper and code useful, please consider citing the [preprint](https://www.biorxiv.org/content/10.1101/2023.02.03.526939v1):
 
 ```
 @article{saturn2023,
   title={Towards Universal Cell Embeddings: Integrating Single-cell RNA-seq Datasets across Species with SATURN},
   author={Rosen, Yanay and Brbi{\'c}, Maria and Roohani, Yusuf and Swanson, Kyle and Ziang, Li and Leskovec, Jure},
   journal={bioRxiv},
+  doi = {10.1101/2023.02.03.526939},
   year={2023},
 }
 ```
 
+
+## Data Availability
+
+|Link|Description|
+|----|-----------|
+|http://snap.stanford.edu/saturn/data/ah_atlas_export.tar.gz|5 Species Alignment of Aqueous Humor Outflow (AH) Atlas|
+|http://snap.stanford.edu/saturn/data/frog_zebrafish_export.tar.gz|Frog and Zebrafish Embryogenesis Alignment|
+|http://snap.stanford.edu/saturn/data/tabula_mammal_export.tar.gz|Tabula Sapiens, Muris and Microcebus Coarse Whole Atlas Alignments and Individual Tissue alignemnts|
+|http://snap.stanford.edu/saturn/data/protein_embeddings.tar.gz|Protein Embeddings for analyzed species|
 
 
 

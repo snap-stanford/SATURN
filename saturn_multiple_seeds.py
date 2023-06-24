@@ -39,7 +39,7 @@ if __name__ == '__main__':
         run="frog_zebrafish_run.csv",
         seeds=30,
         embedding_model="ESM2",
-        macrogenes=7175,
+        macrogenes=2000,
         in_label_col="cell_type",
         ref_label_col="cell_type", # not used for F/Z, just a duplicate column name
         l1_penalty=0,

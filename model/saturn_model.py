@@ -212,7 +212,7 @@ class SATURNPretrainModel(torch.nn.Module):
         loss = nn.MSELoss(reduction="sum")
         similarity = torch.nn.CosineSimilarity()
         
-        idx1 = torch.randint(low=0, high=embeddings.shape[1], size=(x1.shape[0],))      
+        idx1 = torch.randint(low=0, high=x1.shape[0], size=(x1.shape[0],))
         x2 = x1[idx1, :]
         target = similarity(embeddings, embeddings[idx1, :])
         

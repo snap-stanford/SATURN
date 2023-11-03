@@ -36,6 +36,8 @@ pip install -r requirements.txt
 pip install torch==1.10.2+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
 ```
 
+This install should talke under 10 minutes.
+
 ## Running SATURN
 
 To run SATURN, use the `train-saturn.py` file.

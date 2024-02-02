@@ -1041,7 +1041,7 @@ if __name__ == '__main__':
         tissue_subset=None,
         tissue_column="tissue_type",
         l1_penalty=0.0,
-        pe_sim_penalty=1.0,
+        pe_sim_penalty=0.2,
         hv_span=0.3,
         centroid_score_func="default"
     )

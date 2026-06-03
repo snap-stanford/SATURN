@@ -1047,8 +1047,15 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
-    torch.cuda.set_device(args.device_num)
-    print(f"Using Device {args.device_num}")
+    if torch.cuda.is_available():
+        torch.cuda.set_device(args.device_num)
+        print(f"Using CUDA device {args.device_num}")
+    elif torch.backends.mps.is_available():
+        args.device = torch.device("mps")
+        print("Using Apple MPS device")
+    else:
+        args.device = torch.device("cpu")
+        print("Using CPU device")
     # Numpy seed
     np.random.seed(args.seed)
     # Torch Seed

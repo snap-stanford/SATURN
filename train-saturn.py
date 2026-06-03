@@ -73,7 +73,11 @@ def train(model, loss_func, mining_func, device,
     '''
     
     model.train()
-    torch.autograd.set_detect_anomaly(True)
+    # Upstream had `torch.autograd.set_detect_anomaly(True)` here, which
+    # forces a device sync on every backward op. On MPS that slows the
+    # metric-learning loop by ~100x; on CUDA it adds measurable overhead.
+    # Anomaly mode is a debugging tool; re-enable locally to chase NaNs.
+    # torch.autograd.set_detect_anomaly(True)
     for batch_idx, batch_dict in enumerate(train_loader):
         optimizer.zero_grad()
         embs = []

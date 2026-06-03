@@ -73,7 +73,11 @@ def train(model, loss_func, mining_func, device,
     '''
     
     model.train()
-    torch.autograd.set_detect_anomaly(True)
+    # Upstream had `torch.autograd.set_detect_anomaly(True)` here, which
+    # forces a device sync on every backward op. On MPS that slows the
+    # metric-learning loop by ~100x; on CUDA it adds measurable overhead.
+    # Anomaly mode is a debugging tool; re-enable locally to chase NaNs.
+    # torch.autograd.set_detect_anomaly(True)
     for batch_idx, batch_dict in enumerate(train_loader):
         optimizer.zero_grad()
         embs = []
@@ -104,8 +108,16 @@ def train(model, loss_func, mining_func, device,
             
         indices_mapped = [labels[i] for i in indices_tuple] # map to labels for only the purpose of writing to triplets file
         
-        for j in range(len(indices_mapped[0])):
-            key = f"{indices_mapped[0][j]},{indices_mapped[1][j]},{indices_mapped[2][j]}"
+        # Upstream indexed `indices_mapped[k][j]` one element at a time. Each
+        # access on a device tensor forces a device->host sync because the
+        # value is interpolated into an f-string (~1.25M syncs/epoch typical).
+        # Move each tensor to host once, then iterate in pure Python.
+        # Diagnostic-only data path; no effect on weights.
+        i0 = indices_mapped[0].detach().cpu().tolist()
+        i1 = indices_mapped[1].detach().cpu().tolist()
+        i2 = indices_mapped[2].detach().cpu().tolist()
+        for j in range(len(i0)):
+            key = f"{i0[j]},{i1[j]},{i2[j]}"
             indices_counts[key] = indices_counts.get(key, 0) + 1
         loss = loss_func(embeddings, labels, indices_tuple, embs_list=embs)
         
@@ -1047,8 +1059,15 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
-    torch.cuda.set_device(args.device_num)
-    print(f"Using Device {args.device_num}")
+    if torch.cuda.is_available():
+        torch.cuda.set_device(args.device_num)
+        print(f"Using CUDA device {args.device_num}")
+    elif torch.backends.mps.is_available():
+        args.device = torch.device("mps")
+        print("Using Apple MPS device")
+    else:
+        args.device = torch.device("cpu")
+        print("Using CPU device")
     # Numpy seed
     np.random.seed(args.seed)
     # Torch Seed

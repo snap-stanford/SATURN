@@ -108,8 +108,16 @@ def train(model, loss_func, mining_func, device,
             
         indices_mapped = [labels[i] for i in indices_tuple] # map to labels for only the purpose of writing to triplets file
         
-        for j in range(len(indices_mapped[0])):
-            key = f"{indices_mapped[0][j]},{indices_mapped[1][j]},{indices_mapped[2][j]}"
+        # Upstream indexed `indices_mapped[k][j]` one element at a time. Each
+        # access on a device tensor forces a device->host sync because the
+        # value is interpolated into an f-string (~1.25M syncs/epoch typical).
+        # Move each tensor to host once, then iterate in pure Python.
+        # Diagnostic-only data path; no effect on weights.
+        i0 = indices_mapped[0].detach().cpu().tolist()
+        i1 = indices_mapped[1].detach().cpu().tolist()
+        i2 = indices_mapped[2].detach().cpu().tolist()
+        for j in range(len(i0)):
+            key = f"{i0[j]},{i1[j]},{i2[j]}"
             indices_counts[key] = indices_counts.get(key, 0) + 1
         loss = loss_func(embeddings, labels, indices_tuple, embs_list=embs)
         
